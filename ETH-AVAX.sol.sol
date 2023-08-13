@@ -1,60 +1,48 @@
-/ Minting new tokens: The platform should be able to create new tokens and distribute them to players as rewards. Only the owner can mint tokens.
-// Transferring tokens: Players should be able to transfer their tokens to others.
-// Redeeming tokens: Players should be able to redeem their tokens for items in the in-game store.
-// Checking token balance: Players should be able to check their token balance at any time.
-// Burning tokens: Anyone should be able to burn tokens, that they own, that are no longer needed.
-
-
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.18;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract DegenToken is ERC20, Ownable {
-    // Mapping to store the in-game store items and their costs in tokens
-    mapping(string => uint256) private _itemPrices;
+contract DegenToken is ERC20, ERC20Burnable, Ownable {
+    constructor() ERC20("DegenToken", "DGN") {}
 
-    event ItemRedeemed(address indexed player, string item);
-
-    constructor() ERC20("DegenToken", "DGN") {
-        // Mint initial supply to the contract deployer (owner)
-        _mint(msg.sender, 10 * decimals());
+    function mint(address recipient, uint256 amount) external onlyOwner {
+        _mint(recipient, amount);
     }
 
-    // Function to mint new tokens (only the owner can do this)
-    function mint(address account, uint256 amount) public onlyOwner {
-        _mint(account, amount);
-        emit Transfer(address(0), account, amount);
+    function transfer(address recipient, uint256 amount) public override returns (bool) {
+        require(amount > 0, "Amount must be greater than zero.");
+        _transfer(_msgSender(), recipient, amount);
+        return true;
     }
 
-    // Function to burn tokens (anyone can do this)
-    function burn(uint256 amount) public {
-        require(amount > 0, "Amount must be greater than zero");
-        require(balanceOf(msg.sender) >= amount, "Insufficient balance");
+    function redeemPrize(uint256 prizeCost) external {
+        require(prizeCost > 0, "Prize cost must be greater than zero.");
+        require(balanceOf(_msgSender()) >= prizeCost, "Insufficient balance.");
 
-        _burn(msg.sender, amount);
+        // Generate a pseudo-random number using block hash
+        uint256 blockHashRandom = uint256(blockhash(block.number - 1));
+
+        // Determine the prize selection based on the generated random number
+        bool selectedPrizeA = (blockHashRandom % 2 == 0); // true for Prize A, false for Prize B
+
+        // Emit an event to indicate the prize selection
+        emit PrizeSelected(_msgSender(), prizeCost, selectedPrizeA);
+
+        // Deduct the prize cost from the sender's balance
+        _burn(_msgSender(), prizeCost);
+
+        // Emit an event to indicate successful redemption
+        emit RedemptionSuccessful(_msgSender(), prizeCost);
     }
 
-    // Function to add items and their prices to the in-game store
-    function addItemToStore(string memory item, uint256 price) public onlyOwner {
-        require(price > 0, "Price must be greater than zero");
-        _itemPrices[item] = price;
+    function checkBalance(address account) external view returns (uint256) {
+        return balanceOf(account);
     }
 
-    // Function to redeem tokens for items in the in-game store
-    function redeem(string memory item) public {
-        require(_itemPrices[item] > 0, "Item not available for redemption");
-        require(balanceOf(msg.sender) >= _itemPrices[item], "Insufficient balance");
-
-        // Perform the redemption (in this example, transfer the tokens to the contract owner)
-        _transfer(msg.sender, owner(), _itemPrices[item]);
-
-        emit ItemRedeemed(msg.sender, item);
-    }
-
-    // Function to check the price of an item in the in-game store
-    function getItemPrice(string memory item) public view returns (uint256) {
-        return _itemPrices[item];
-    }
+    // Custom events to emit during the prize redemption process
+    event PrizeSelected(address indexed account, uint256 prizeCost, bool selectedPrizeA);
+    event RedemptionSuccessful(address indexed account, uint256 prizeCost);
 }
