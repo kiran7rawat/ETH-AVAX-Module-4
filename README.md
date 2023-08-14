@@ -43,3 +43,5 @@ For the deployment on your own pc follow the steps:
 5)So finally at the last step deploy it.
 6)To verify copy the address of deployment and paste it into "Snowtrace Fauji Testnet".
 </pre>
+
+#Videowalkthrough - https://www.loom.com/share/659425ebc0c64ba2ad106aa6e44d79e0?sid=a112ad89-680a-45e1-986c-9c1b95d746c4
